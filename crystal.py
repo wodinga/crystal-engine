@@ -18,6 +18,7 @@ class crystalengine:
             sys.exit(type(e).__name__ + ' while loading MIDI: ' + str(e))
         self.client = jack.Client('Crystal')
         self.playback = self.client.get_ports(is_audio=True, is_output=False, is_physical=True)
+        print(self.playback)
         self.midiOut = self.client.midi_outports.register('midiOut')
         @self.client.set_samplerate_callback
         def samplerate(samplerate):
@@ -25,6 +26,7 @@ class crystalengine:
 
         @self.client.set_shutdown_callback
         def shutdown(status, reason):
+            self.midiOut.clear_buffer()
             print('JACK shutdown:', reason, status)
 
         @self.client.set_process_callback
@@ -32,21 +34,30 @@ class crystalengine:
             self.midiOut.clear_buffer()
             offset = 0
             for note in self.aella:
-                offset += round(note.time * self.sr)
                 print(note)
-                self.midiOut.write_midi_event(offset, note.bytes())
+                try:
+                    self.midiOut.write_midi_event(offset, note.bytes())
+                except Exception as e:
+                    print(e)
+                    raise jack.CallbackExit
+                offset += round(note.time * self.sr)
 
     def playSound(self):
-        with self.client:
-            if self.connect_to:
-                self.midiOut.connect(self.connect_to)
-                self.client.connect(self.synth[1], self.playback[1])
-                self.client.connect(self.synth[0], self.playback[0])
+        client = self.client
+        synth = self.synth
+        playback = self.playback
+        with client:
+            self.midiOut.clear_buffer()
+            if len(client.get_all_connections(synth[0])) == 0:
+                client.connect(synth[0], playback[0])
+                client.connect(synth[1], playback[1])
                 print('should be playing')
                 try:
                     event.wait()
                 except KeyboardInterrupt:
                     print('\nInterrupted by user')
+            if self.connect_to:
+                self.midiOut.connect(self.connect_to)
 
 engine = crystalengine()
 engine.playSound()
