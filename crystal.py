@@ -1,25 +1,43 @@
 #!/usr/bin/env python3
+#!/usr/bin/env python3
 import threading
+import _thread
 import sys
 import jack
 import time
 from mido import MidiFile
 event = threading.Event()
+synth = ['synthv1:out_1','synthv1:out_2']
+synth2 = ['synthv1-01:out_1','synthv1-01:out_2']
+synth3 = ['synthv1-02:out_1','synthv1-02:out_2']
 
+midiIn = 'synthv1:in'
+midiIn2 = 'synthv1-01:in'
+midiIn3 = 'synthv1-02:in'
+
+midiOut = 'synthv1:in'
+midiOut2 = 'synthv1-01:out'
+midiOut3 = 'synthv1-02:out'
+
+crystal = 'crystal'
+crystal2 = 'crystal2'
+crystal3 = 'crystal3'
 class crystalengine:
-    def __init__(self):
-        self.synth = ['synthv1:out_1','synthv1:out_2']
+    def __init__(self, s=['synthv1:out_1','synthv1:out_2'],
+    m='synthv1:in',
+    o ='synthv1:out',
+    c='Crystal'):
         self.filename = '/home/pi/Aella.mid'
-        self.connect_to = 'synthv1:in'
+        self.synth = s
+        self.connect_to = m
         self.sr = None  # sampling rate
         try:
             self.aella = iter(MidiFile(self.filename))
         except Exception as e:
             sys.exit(type(e).__name__ + ' while loading MIDI: ' + str(e))
-        self.client = jack.Client('Crystal')
+        self.client = jack.Client(c)
         self.playback = self.client.get_ports(is_audio=True, is_output=False, is_physical=True)
-        print(self.playback)
-        self.midiOut = self.client.midi_outports.register('midiOut')
+        self.midiOut = self.client.midi_outports.register(o)
         self.offset = 0
         self.msg = next(self.aella)
 
@@ -35,7 +53,6 @@ class crystalengine:
 
         @self.client.set_process_callback
         def process(frames):
-            midiOut = self.midiOut
             self.midiOut.clear_buffer()
             while True:
                 if self.offset >= frames:
@@ -54,6 +71,7 @@ class crystalengine:
 
 
     def playSound(self):
+        print('balls')
         client = self.client
         synth = self.synth
         playback = self.playback
@@ -64,6 +82,7 @@ class crystalengine:
             if len(client.get_all_connections(synth[0])) == 0:
                 client.connect(synth[0], playback[0])
                 client.connect(synth[1], playback[1])
+                client.cpu_load()
                 print('should be playing')
             print('Playing', repr(self.filename), '... press Ctrl+C to stop')
             try:
@@ -72,5 +91,11 @@ class crystalengine:
                 self.midiOut.clear_buffer()
                 print('\nInterrupted by user')
 
-engine = crystalengine()
-engine.playSound()
+engine = crystalengine(synth, midiIn, crystal)
+#engine2 = crystalengine(synth2, midiIn2, crystal3)
+engine3 = crystalengine(synth3, midiIn3, crystal2)
+print('start thread 1')
+_thread.start_new_thread(engine.playSound, ())
+print('start thread 2')
+_thread.start_new_thread(engine3.playSound, ())
+event.wait()
