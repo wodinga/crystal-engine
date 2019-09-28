@@ -16,12 +16,17 @@ class crystalengine:
         self.tfm.set_globals(verbosity=3) # for debugging
         self.comb = sox.Combiner()
 
-    def activatePodium(self, podium):
+    def activate_podiums(self, podium):
         if podium in self.active_podiums:
             self.active_podiums[podium] = True
             print(self.active_podiums)
 
-    def deactivatePodium(self, podium):
+    def toggle_podiums(self, podium):
+        if podium in self.active_podiums:
+            self.active_podiums[podium] = not self.active_podiums[podium]
+            print(self.active_podiums)
+
+    def deactivate_podiums(self, podium):
         if podium in self.active_podiums:
             self.active_podiums[podium] = False
             print(self.active_podiums)
@@ -43,7 +48,17 @@ class crystalengine:
 
 crystal = crystalengine()
 
-crystal.activatePodium('red')
-crystal.activatePodium('green')
-crystal.deactivatePodium('yellow')
-crystal.play_sound()
+crystal.activate_podiums('green')
+crystal.deactivate_podiums('yellow')
+key = ''
+while True:
+    key = input()
+    if key == '1':
+        crystal.toggle_podiums('red')
+    elif key == '2':
+        crystal.toggle_podiums('blue')
+    elif key == '3':
+        crystal.toggle_podiums('green')
+    elif key == '4':
+        crystal.toggle_podiums('yellow')
+    crystal.play_sound()
